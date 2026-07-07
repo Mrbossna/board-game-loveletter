@@ -191,8 +191,34 @@ input.code-input { text-transform: uppercase; letter-spacing: 6px; text-align: c
 .pip.empty { background: rgba(255,255,255,0.14); box-shadow: none; }
 .seat .hand-mini { display: flex; gap: 3px; }
 .seat .shield {
-  position: absolute; top: -8px; right: -8px; font-size: 1.1rem;
+  position: absolute; top: -8px; right: -8px; font-size: 1.3rem; z-index: 3;
   filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+  animation: shield-bob 1.9s ease-in-out infinite;
+}
+@keyframes shield-bob { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-3px) scale(1.12); } }
+
+/* Protected (Handmaid): wrap the player in a glowing shield bubble so it's
+   obvious at a glance they can't be targeted this round. */
+.seat.shielded { border-color: #79e0c9; }
+.seat.shielded::after {
+  content: ''; position: absolute; inset: -6px; border-radius: 16px;
+  border: 2px solid rgba(121, 224, 201, 0.85);
+  background: radial-gradient(circle at 50% 42%, rgba(121,224,201,0.20), rgba(121,224,201,0.05) 68%, transparent);
+  box-shadow: 0 0 18px rgba(121,224,201,0.55), inset 0 0 16px rgba(121,224,201,0.35);
+  pointer-events: none; z-index: 2;
+  animation: shield-aura 1.9s ease-in-out infinite;
+}
+@keyframes shield-aura {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.035); }
+}
+/* Your own area, when protected */
+.myarea.shielded .myhead {
+  border-radius: 12px; padding: 0.32rem 0.85rem;
+  border: 1.5px solid rgba(121, 224, 201, 0.7);
+  background: rgba(121, 224, 201, 0.1);
+  box-shadow: 0 0 16px rgba(121,224,201,0.5);
+  animation: shield-aura 1.9s ease-in-out infinite;
 }
 .seat .discard-mini {
   display: flex; align-items: center; justify-content: center; gap: 2px;
@@ -314,6 +340,7 @@ input.code-input { text-transform: uppercase; letter-spacing: 6px; text-align: c
 }
 .modal {
   width: min(460px, 94vw);
+  max-height: 92vh; overflow-y: auto;
   background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
   border: 1px solid rgba(217,180,91,0.4);
   border-radius: var(--radius); box-shadow: var(--shadow);
@@ -500,6 +527,108 @@ input.code-input { text-transform: uppercase; letter-spacing: 6px; text-align: c
   .fx-ring { animation-duration: 0.4s; }
 }
 
+/* Big centred mark for a Guard guess (huge ✅ / ❌) */
+.fx-bigmark {
+  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  font-size: clamp(4.5rem, 26vmin, 11rem); line-height: 1;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.6));
+  animation: fx-bigmark 1.5s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+.fx-bigmark--miss { filter: drop-shadow(0 0 20px rgba(229,72,77,0.85)) drop-shadow(0 6px 16px rgba(0,0,0,0.6)); }
+.fx-bigmark--hit { filter: drop-shadow(0 0 20px rgba(70,177,123,0.85)) drop-shadow(0 6px 16px rgba(0,0,0,0.6)); }
+@keyframes fx-bigmark {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(-12deg); }
+  22% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(4deg); }
+  40% { transform: translate(-50%, -50%) scale(1) rotate(0); }
+  78% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.05); }
+}
+
+/* Long, unmissable death announcement */
+.fx-death {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  background: rgba(24, 6, 12, 0.94);
+  border: 2px solid var(--danger); border-radius: 16px;
+  padding: 1rem 1.6rem; box-shadow: 0 0 34px rgba(229,72,77,0.5), var(--shadow);
+  max-width: 90vw; text-align: center;
+  animation: fx-death-in 0.4s cubic-bezier(0.2, 1.3, 0.4, 1) both,
+             fx-death-pulse 1s ease-in-out 0.4s 2 alternate;
+}
+.fx-death-correct {
+  font-family: var(--serif); font-weight: 700;
+  font-size: clamp(1rem, 4.2vw, 1.4rem); color: #7ff0c0;
+  text-shadow: 0 0 12px rgba(70,177,123,0.7);
+}
+.fx-death-skull { font-size: clamp(2.6rem, 12vmin, 4.4rem); line-height: 1; }
+.fx-death-name {
+  font-family: var(--serif); font-weight: 700;
+  font-size: clamp(1.1rem, 5vw, 1.7rem); color: #ffd7d7;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+}
+@keyframes fx-death-in {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes fx-death-pulse {
+  from { box-shadow: 0 0 20px rgba(229,72,77,0.35), var(--shadow); }
+  to { box-shadow: 0 0 44px rgba(229,72,77,0.75), var(--shadow); }
+}
+
+/* Full-screen game-over celebration (shown before the restart modal) */
+.fx-gameover {
+  position: fixed; inset: 0; z-index: 95; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 35%, rgba(60,20,60,0.72), rgba(8,3,12,0.92));
+  backdrop-filter: blur(3px);
+  animation: fx-go-in 0.5s ease both;
+}
+.fx-gameover.fx-go-out { animation: fx-go-out 0.5s ease both; }
+@keyframes fx-go-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fx-go-out { from { opacity: 1; } to { opacity: 0; } }
+.fx-go-card {
+  position: relative; z-index: 2; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  padding: 1.5rem 2rem;
+}
+.fx-go-crown {
+  font-size: clamp(3.5rem, 18vmin, 7rem); line-height: 1;
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,0.6));
+  animation: fx-go-crown 2.4s ease-in-out infinite;
+}
+@keyframes fx-go-crown {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-10px) rotate(4deg); }
+}
+.fx-go-title {
+  font-family: var(--serif); font-weight: 700; letter-spacing: 1px;
+  font-size: clamp(1.3rem, 6vw, 2.1rem); color: var(--text);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+}
+.fx-go-winner {
+  font-family: var(--serif); font-weight: 700;
+  font-size: clamp(2rem, 11vw, 4rem); color: var(--gold);
+  text-shadow: 0 0 26px rgba(217,180,91,0.75), 0 3px 10px rgba(0,0,0,0.6);
+  animation: fx-go-winner 1.6s ease-in-out infinite;
+  max-width: 92vw; overflow-wrap: anywhere;
+}
+@keyframes fx-go-winner { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.fx-go-sub { color: var(--text-dim); font-size: clamp(0.85rem, 3.4vw, 1.05rem); }
+.fx-go-confetti { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.fx-go-confetti .cf {
+  position: absolute; top: -8vh; display: block; border-radius: 2px; opacity: 0.9;
+  animation-name: cf-fall; animation-timing-function: linear; animation-iteration-count: infinite;
+}
+@keyframes cf-fall {
+  0% { transform: translateY(-10vh) rotate(var(--cf-rot)); opacity: 1; }
+  100% { transform: translateY(112vh) rotate(calc(var(--cf-rot) + 540deg)); opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Drop the animations (keeping each element's static, centred transform) so
+     reduced-motion users get the same info without the bounce/rotate/rise. */
+  .fx-bigmark, .fx-skull, .fx-badge, .fx-go-crown, .fx-go-winner, .fx-death { animation: none; }
+}
+
 .ticker {
   font-size: 0.82rem; color: var(--text-dim);
   max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -541,4 +670,47 @@ input.code-input { text-transform: uppercase; letter-spacing: 6px; text-align: c
 @media (min-width: 900px) {
   .seat { width: 140px; }
   .myhand .card { width: 150px; }
+}
+
+/* ---------------- Phone landscape ----------------
+   A short viewport (phone held sideways) can't stack full-size cards, opponents
+   and the action panel vertically. Size cards by HEIGHT, tighten spacing, and
+   let the table scroll as a safety net so nothing is ever unreachable.
+   (Placed after the desktop block so `.myhand .card` here wins by source order
+   even on wide ≥900px phones that are also short.) */
+@media (orientation: landscape) and (max-height: 600px) {
+  .table {
+    gap: 0.25rem;
+    padding: 0.3rem 0.55rem;
+    overflow-y: auto;
+  }
+  .topbar { padding: 0.15rem 0.35rem; }
+  .topbar .mid { font-size: 0.8rem; }
+
+  .opponents { gap: 0.35rem; }
+  .seat { width: clamp(66px, 13vh, 108px); padding: 0.3rem; gap: 0.18rem; }
+  .seat .nm { font-size: 0.72rem; }
+  .seat .discard-mini { min-height: 0; }
+
+  .center { gap: 0.25rem; }
+  .turn-banner { font-size: clamp(0.9rem, 3.6vh, 1.25rem); }
+  .deck-area { gap: 0.6rem; }
+  .hint { font-size: 0.72rem; min-height: 0; }
+  .timer-bar { height: 5px; }
+
+  /* Height-driven card sizing keeps the board inside a short viewport. */
+  .card { width: auto; height: clamp(78px, 32vh, 150px); }
+  .myhand .card { width: auto; height: clamp(78px, 32vh, 150px); }
+  .card--sm { width: auto; height: clamp(28px, 12vh, 46px); }
+  .guess-card .card--sm { width: auto; height: clamp(36px, 14vh, 58px); }
+  /* The flying FX card keeps its pinned width (.fx-card .card, 0-2-0); force its
+     height back to auto so aspect-ratio 5/7 isn't dropped and it isn't squished. */
+  .fx-card .card { height: auto; }
+  .myhand { gap: 0.5rem; }
+
+  /* The action panel scrolls internally; leave room for the hand below it. */
+  .action-panel { max-height: 60vh; padding: 0.6rem 0.7rem; gap: 0.5rem; }
+  .ability-desc { font-size: 0.8rem; }
+  .target-row, .guess-row { gap: 0.4rem; }
+  .target-btn { min-width: 72px; padding: 0.45rem 0.55rem; }
 }

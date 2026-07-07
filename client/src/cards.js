@@ -28,15 +28,15 @@ const WINE = '#8a1f3a';
 
 // Emblem inner-SVG per card key (drawn inside a 100x100 medallion).
 const EMBLEMS = {
+  // An upright sword — deliberately NOT a shield, so card #1 reads as "attack".
   guard: `
-    <path d="M50 20 L72 28 V50 C72 65 62 76 50 81 C38 76 28 65 28 50 V28 Z" fill="${INK}"/>
-    <path d="M50 27 L66 33 V50 C66 61 58 70 50 74 C42 70 34 61 34 50 V33 Z" fill="#f7ecd2"/>
-    <g fill="${GOLD}">
-      <path d="M50 33 l4 5 h-8 z"/>
-      <rect x="47.6" y="37" width="4.8" height="27" rx="1.2"/>
-      <rect x="40" y="45" width="20" height="4.6" rx="2"/>
-      <circle cx="50" cy="66" r="3.2"/>
-    </g>`,
+    <path d="M50 15 L56 27 V57 H44 V27 Z" fill="#dfe4ea" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M50 15 L53 27 H47 Z" fill="#f6f8fa"/>
+    <line x1="50" y1="24" x2="50" y2="55" stroke="${INK}" stroke-width="1.4" stroke-opacity="0.45"/>
+    <rect x="30" y="56.5" width="40" height="7.5" rx="3.5" fill="${GOLD}" stroke="${INK}" stroke-width="2"/>
+    <rect x="46" y="63.5" width="8" height="17" rx="2" fill="${INK}"/>
+    <line x1="47.8" y1="66" x2="47.8" y2="79" stroke="${GOLD}" stroke-width="1" stroke-opacity="0.6"/>
+    <circle cx="50" cy="83.5" r="5" fill="${GOLD}" stroke="${INK}" stroke-width="2"/>`,
   priest: `
     <g stroke="${GOLD}" stroke-width="2.4" stroke-linecap="round">
       <line x1="50" y1="18" x2="50" y2="26"/><line x1="50" y1="74" x2="50" y2="82"/>

@@ -34,12 +34,16 @@ export function describeTurn(events, { nameOf, cardName }) {
   let targetId = null;
   let icon = '';
   let caption = '';
+  // For a Guard guess, a big center mark ('hit' | 'miss') so the outcome is
+  // unmistakable — a giant ✅ when right, a giant ❌ when wrong.
+  let bigMark = null;
 
   switch (card) {
     case 1: // Guard
       if (eff && eff.t === 'guard') {
         targetId = eff.target;
-        icon = eff.hit ? '💥' : '🛡️';
+        icon = eff.hit ? '✅' : '❌';
+        bigMark = eff.hit ? 'hit' : 'miss';
         caption = `${A(actorId)} ทาย ${A(eff.target)} ถือ ${cardName(eff.guess)} — ${eff.hit ? 'ถูก!' : 'พลาด'}`;
       } else { caption = `${A(actorId)} เล่น ทหาร`; }
       break;
@@ -67,5 +71,5 @@ export function describeTurn(events, { nameOf, cardName }) {
     case 8: icon = '💔'; caption = `${A(actorId)} ทิ้ง เจ้าหญิง!`; break; // Princess
     default: caption = `${A(actorId)} เล่น ${cardName(card)}`;
   }
-  return { card, actorId, targetId, icon, caption, outs, self: !targetId };
+  return { card, actorId, targetId, icon, caption, outs, self: !targetId, bigMark };
 }

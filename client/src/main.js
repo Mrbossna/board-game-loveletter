@@ -38,6 +38,9 @@ const S = {
   // action-animation queue
   fxQueue: [],
   fxRunning: false,
+  // game-over celebration: while true, the winner fanfare plays full-screen and
+  // the restart modal is withheld until it finishes.
+  celebrating: false,
 };
 
 // Re-arm the sound baseline so the NEXT observed state is treated as a fresh
@@ -49,6 +52,8 @@ function resetSfx() {
   S.sfxPhase = null;
   S.sfxCurrent = null;
   S.fxQueue = [];
+  S.celebrating = false;
+  removeGameOverCelebration();
 }
 
 // Trigger sound effects from server state transitions (no sound on the first
@@ -86,6 +91,7 @@ function handleSounds(cur) {
     const seated = g.players.some((p) => p.id === S.playerId);
     // Winners and spectators hear the fanfare; only a seated loser hears "lose".
     if (g.winnerId === S.playerId || !seated) sfx.gameWin(); else sfx.lose();
+    startGameOverCelebration(g); // long full-screen "who won" moment before restart
   }
   S.sfxPhase = g.phase;
 }
@@ -191,8 +197,27 @@ async function animateFx(desc) {
     layer.appendChild(badge);
     setTimeout(() => badge.remove(), dur);
   }
-  // Elimination: skull + shake ring on each eliminated player's area
-  for (const outId of desc.outs || []) {
+  const outs = desc.outs || [];
+
+  // Big centred ❌ for a Guard MISS — a wrong guess has no other visible
+  // consequence, so this is the key "you missed" signal. A correct guess always
+  // eliminates, so its ✅ rides inside the death banner below (no overlap). The
+  // hit-without-elimination branch can't happen in normal play, but is handled
+  // so the ✅ is never silently dropped.
+  let bigEl = null;
+  if (desc.bigMark === 'miss' || (desc.bigMark === 'hit' && !outs.length)) {
+    bigEl = document.createElement('div');
+    bigEl.className = `fx-bigmark fx-bigmark--${desc.bigMark}`;
+    bigEl.textContent = desc.bigMark === 'hit' ? '✅' : '❌';
+    layer.appendChild(bigEl);
+  }
+
+  // Elimination: a long, unmissable death announcement so everyone sees who's
+  // out. A skull pops on the player's own seat, plus a centred banner naming
+  // them that lingers well past the normal turn animation.
+  const deathHold = outs.length ? (reducedMotion ? 1200 : 2600) : 0;
+  let deathBanner = null;
+  for (const outId of outs) {
     const oc = areaRectFor(outId) || to;
     const skull = document.createElement('div');
     skull.className = 'fx-skull';
@@ -200,11 +225,83 @@ async function animateFx(desc) {
     skull.style.left = `${oc.x}px`;
     skull.style.top = `${oc.y}px`;
     layer.appendChild(skull);
-    setTimeout(() => skull.remove(), dur);
+    setTimeout(() => skull.remove(), deathHold || dur);
+  }
+  if (deathHold) {
+    deathBanner = document.createElement('div');
+    deathBanner.className = 'fx-death';
+    // A correct Guard guess folds its ✅ into the banner so hit + death read as
+    // one centred moment instead of two overlapping overlays.
+    if (desc.bigMark === 'hit') {
+      const correct = document.createElement('div');
+      correct.className = 'fx-death-correct';
+      correct.textContent = '✅ ทายถูก!';
+      deathBanner.appendChild(correct);
+    }
+    const dSkull = document.createElement('div');
+    dSkull.className = 'fx-death-skull';
+    dSkull.textContent = '☠️';
+    const dName = document.createElement('div');
+    dName.className = 'fx-death-name';
+    // textContent — player names are untrusted and must never be treated as HTML.
+    dName.textContent = `${outs.map((id) => nameOf(id)).join(', ')} ตกรอบ!`;
+    deathBanner.appendChild(dSkull);
+    deathBanner.appendChild(dName);
+    layer.appendChild(deathBanner);
   }
 
-  await wait(dur - travel);
+  // Hold long enough for both the normal impact and any death announcement.
+  await wait(Math.max(dur - travel, deathHold));
   cap.remove(); cardEl.remove(); ring.remove();
+  if (bigEl) bigEl.remove();
+  if (deathBanner) deathBanner.remove();
+}
+
+// ---------------- game-over celebration ----------------
+// A long, full-screen "who won" fanfare shown once when the match ends, before
+// the restart modal appears. Lives outside #app so re-renders don't disturb it.
+let goCleanup = null;
+function removeGameOverCelebration() {
+  if (goCleanup) { goCleanup(); goCleanup = null; }
+}
+function startGameOverCelebration(g) {
+  if (S.celebrating) return;
+  S.celebrating = true;
+  render(); // withhold the restart modal while the celebration plays
+  const overlay = document.createElement('div');
+  overlay.className = 'fx-gameover';
+  const winner = g.winnerId ? nameOf(g.winnerId) : 'ไม่มีผู้ชนะ';
+  const iWon = g.winnerId && g.winnerId === S.playerId;
+  const colors = ['#d9b45b', '#8a1f3a', '#46b17b', '#6a7fa0', '#c4552d', '#7d5ba6', '#f4e9d6'];
+  let confetti = '';
+  if (!reducedMotion) {
+    for (let i = 0; i < 46; i++) {
+      const left = Math.random() * 100;
+      const delay = (Math.random() * 1.2).toFixed(2);
+      const fall = (2.6 + Math.random() * 2).toFixed(2);
+      const rot = Math.floor(Math.random() * 360);
+      const w = 6 + Math.floor(Math.random() * 8);
+      confetti += `<i class="cf" style="left:${left.toFixed(1)}%;background:${colors[i % colors.length]};`
+        + `animation-delay:${delay}s;animation-duration:${fall}s;width:${w}px;height:${(w * 1.6).toFixed(0)}px;`
+        + `--cf-rot:${rot}deg"></i>`;
+    }
+  }
+  // Static markup + esc() on the only dynamic value (winner name).
+  overlay.innerHTML = `
+    <div class="fx-go-confetti">${confetti}</div>
+    <div class="fx-go-card">
+      <div class="fx-go-crown">👑</div>
+      <div class="fx-go-title">${iWon ? 'คุณชนะเกม!' : 'จบเกมแล้ว'}</div>
+      <div class="fx-go-winner">${esc(winner)}</div>
+      <div class="fx-go-sub">ผู้ชนะ • สะสมครบ ${g.tokensToWin} ตราแห่งใจ</div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const life = reducedMotion ? 1700 : 4600;
+  const outT = setTimeout(() => overlay.classList.add('fx-go-out'), life);
+  const doneT = setTimeout(() => { overlay.remove(); goCleanup = null; S.celebrating = false; render(); }, life + 550);
+  // Cleanup hook so a restart/leave mid-celebration tears it down immediately.
+  goCleanup = () => { clearTimeout(outT); clearTimeout(doneT); overlay.remove(); };
 }
 
 function persistIdentity() {
@@ -411,7 +508,7 @@ function tableScreen() {
 
     ${S.reveal ? revealModal() : ''}
     ${g.phase === 'roundEnd' ? roundEndModal() : ''}
-    ${g.phase === 'gameOver' ? gameOverModal() : ''}
+    ${g.phase === 'gameOver' && !S.celebrating ? gameOverModal() : ''}
     ${logPanel()}
     ${S.helpOpen ? helpModal() : ''}
     ${S.discardsOpen ? discardsModal() : ''}
@@ -430,9 +527,9 @@ function seatHTML(p) {
         : Array.from({ length: p.handCount }).map(() => cardHTML(null, { small: true, faceDown: true })).join(''))
     : '';
   const lastDiscard = p.discard.length ? p.discard[p.discard.length - 1] : null;
-  return `<div class="seat ${p.isCurrent ? 'current' : ''} ${p.alive ? '' : 'out'} ${canTarget ? 'selectable' : ''} ${selected ? 'selectable' : ''}"
+  return `<div class="seat ${p.isCurrent ? 'current' : ''} ${p.alive ? '' : 'out'} ${canTarget ? 'selectable' : ''} ${selected ? 'selectable' : ''} ${p.protected ? 'shielded' : ''}"
        data-action="${canTarget ? 'select-seat' : ''}" data-id="${p.id}">
-    ${p.protected ? '<div class="shield" title="ได้รับการป้องกัน">🛡️</div>' : ''}
+    ${p.protected ? '<div class="shield" title="ได้รับการป้องกัน (การ์ดสาวใช้)">🛡️</div>' : ''}
     <div class="avatar">${avatarInner(p)}</div>
     <div class="nm">${esc(p.name)}${p.connected ? '' : ' ⚠'}</div>
     <div class="tokens">${tokens}</div>
@@ -490,12 +587,12 @@ function myAreaHTML(meP) {
     return cardElementString(v, { selected, disabled, playable: mine });
   }).join('');
 
-  return `<div class="myarea">
+  return `<div class="myarea ${meP.protected ? 'shielded' : ''}">
     ${mine ? actionBar(meP) : ''}
     <div class="myhead">
       <span class="nm">${esc(meP.name)} (คุณ)</span>
       <div class="tokens">${tokenPips(meP.tokens)}</div>
-      ${meP.protected ? '<span title="ป้องกันอยู่">🛡️</span>' : ''}
+      ${meP.protected ? '<span title="ป้องกันอยู่ (การ์ดสาวใช้)">🛡️ ป้องกันอยู่</span>' : ''}
       ${!meP.alive ? '<span>☠ ตกรอบแล้ว</span>' : ''}
     </div>
     <div class="myhand ${mine ? 'playable' : ''}">${cards}</div>
@@ -934,6 +1031,12 @@ async function boot() {
       S.lastDeadline = payload.turnDeadline;
     }
     try { handleSounds(payload); } catch (e) { /* never let audio block the UI */ }
+    // If the match left the gameOver phase (restart / new round), drop any
+    // lingering celebration overlay so it can't cover a fresh game.
+    if (payload.game && payload.game.phase !== 'gameOver' && S.celebrating) {
+      S.celebrating = false;
+      removeGameOverCelebration();
+    }
     render();
     // Start any queued action animations now that the fresh DOM is in place
     // (so seat coordinates are measured against the current layout).

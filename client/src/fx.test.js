@@ -26,7 +26,7 @@ test('groupEventsIntoTurns: drops events before the first play', () => {
   assert.equal(turns[0][0].t, 'play');
 });
 
-test('describeTurn Guard hit: target + 💥 + elimination', () => {
+test('describeTurn Guard hit: target + ✅ + bigMark hit + elimination', () => {
   const d = describeTurn([
     { t: 'play', a: 'a', card: 1 },
     { t: 'guard', a: 'a', target: 'b', guess: 8, hit: true },
@@ -35,19 +35,28 @@ test('describeTurn Guard hit: target + 💥 + elimination', () => {
   assert.equal(d.card, 1);
   assert.equal(d.actorId, 'a');
   assert.equal(d.targetId, 'b');
-  assert.equal(d.icon, '💥');
+  assert.equal(d.icon, '✅');
+  assert.equal(d.bigMark, 'hit');
   assert.deepEqual(d.outs, ['b']);
   assert.ok(d.caption.includes('Alice') && d.caption.includes('Bob') && d.caption.includes('ถูก!'));
 });
 
-test('describeTurn Guard miss: 🛡️ and no elimination', () => {
+test('describeTurn Guard miss: big ❌ (bigMark miss) and no elimination', () => {
   const d = describeTurn([
     { t: 'play', a: 'a', card: 1 },
     { t: 'guard', a: 'a', target: 'b', guess: 5, hit: false },
   ], deps);
-  assert.equal(d.icon, '🛡️');
+  assert.equal(d.icon, '❌');
+  assert.equal(d.bigMark, 'miss');
   assert.deepEqual(d.outs, []);
   assert.ok(d.caption.includes('พลาด'));
+});
+
+test('describeTurn: non-Guard turns carry no bigMark', () => {
+  const baron = describeTurn([{ t: 'play', a: 'a', card: 3 }, { t: 'baron', a: 'a', target: 'c', result: 'actor' }, { t: 'out', p: 'c' }], deps);
+  assert.equal(baron.bigMark, null);
+  const handmaid = describeTurn([{ t: 'play', a: 'a', card: 4 }, { t: 'handmaid', a: 'a' }], deps);
+  assert.equal(handmaid.bigMark, null);
 });
 
 test('describeTurn Baron: target loses', () => {
