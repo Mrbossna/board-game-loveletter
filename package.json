@@ -1,0 +1,26 @@
+{
+  "name": "love-letter-discord",
+  "version": "1.0.0",
+  "description": "Love Letter — multiplayer web game, playable standalone and as a Discord Activity",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "build": "vite build",
+    "dev:server": "node --watch server/index.js",
+    "dev:client": "vite",
+    "test": "node --test server/game/LoveLetterGame.test.js client/src/fx.test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "nanoid": "^5.0.7",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "@discord/embedded-app-sdk": "^1.9.0",
+    "socket.io-client": "^4.7.5",
+    "vite": "^5.4.8"
+  }
+}
