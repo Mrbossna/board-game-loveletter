@@ -24,6 +24,7 @@ const S = {
   reveal: null,         // one-off private reveal
   logOpen: false,
   helpOpen: false,
+  discardsOpen: false,
   joinMode: false,
   lastCurrent: undefined,
   lastDeadline: null,
@@ -492,6 +493,7 @@ function tableScreen() {
       <div class="topbar-actions">
         <button class="iconbtn" data-action="toggle-sound" title="เสียง">${isMuted() ? '🔇' : '🔊'}</button>
         <button class="iconbtn" data-action="help-open" title="คำอธิบายการ์ด">ℹ️<span class="lbl"> การ์ด</span></button>
+        <button class="iconbtn" data-action="discards-open" title="กองไพ่ที่ทิ้งแล้ว">🗑️</button>
         <button class="iconbtn" data-action="toggle-log" title="บันทึกการเล่น">📜</button>
       </div>
     </div>
@@ -509,6 +511,7 @@ function tableScreen() {
     ${g.phase === 'gameOver' && !S.celebrating ? gameOverModal() : ''}
     ${logPanel()}
     ${S.helpOpen ? helpModal() : ''}
+    ${S.discardsOpen ? discardsModal() : ''}
   </div>`;
 }
 
@@ -537,9 +540,9 @@ function seatHTML(p) {
 
 function tokenPips(n) {
   const need = S.state.game.tokensToWin;
-  let out = '';
-  for (let i = 0; i < need; i++) out += `<span class="pip ${i < n ? '' : 'empty'}"></span>`;
-  return out;
+  let pips = '';
+  for (let i = 0; i < need; i++) pips += `<span class="pip ${i < n ? '' : 'empty'}"></span>`;
+  return `<span class="tk-count">${n}/${need} รอบ</span>${pips}`;
 }
 
 function centerHTML() {
@@ -820,6 +823,24 @@ function lastDiscardInfo(log) {
   return null;
 }
 
+// Per-value discarded/remaining totals for the whole round, for the tracker modal.
+function discardSummary(log) {
+  const lastIdx = log.length - 1;
+  return CARD_ORDER.map((v) => ({
+    value: v,
+    total: totalOfValue(v),
+    discarded: lastIdx >= 0 ? discardedCountUpTo(log, lastIdx, v) : 0,
+    remaining: lastIdx >= 0 ? remainingAt(log, lastIdx, v) : totalOfValue(v),
+  }));
+}
+
+// Chronological list of every card value discarded/revealed so far this round.
+function discardHistory(log) {
+  const out = [];
+  log.forEach((e) => discardsOfEvent(e).forEach((v) => out.push(v)));
+  return out;
+}
+
 function logText(e, idx = 0, log = [e]) {
   const nm = (id) => `<span class="actor">${esc(nameOf(id))}</span>`;
   const remainTag = (v) => ` <span class="remain">(เหลือ ${remainingAt(log, idx, v)}/${totalOfValue(v)})</span>`;
@@ -867,6 +888,33 @@ function helpModal() {
   </div></div>`;
 }
 
+function discardsModal() {
+  const g = S.state.game;
+  const summary = discardSummary(g.log);
+  const history = discardHistory(g.log);
+  const grid = summary.map((s) => `
+    <div class="tracker-cell">
+      ${cardHTML(s.value, { small: true })}
+      <div class="t-count">ทิ้งแล้ว ${s.discarded}/${s.total}</div>
+      <div class="t-remain">เหลือ ${s.remaining} ใบ</div>
+    </div>`).join('');
+  const historyStrip = history.length
+    ? history.map((v) => cardHTML(v, { small: true })).join('')
+    : `<span class="hint">ยังไม่มีการทิ้งไพ่ในรอบนี้</span>`;
+  return `<div class="overlay"><div class="modal">
+    <h2>กองไพ่ที่ทิ้งแล้ว</h2>
+    <p style="font-size:0.85rem;color:var(--text-dim)">นับเฉพาะไพ่ที่เปิดเผยแล้วในรอบที่ ${g.round} (ไพ่ในมือ/กองจั่วที่เหลือยังไม่นับ เพราะยังไม่เปิดเผย)</p>
+    <div class="discard-scroll">
+      <div class="tracker-grid">${grid}</div>
+      <div class="discard-history">
+        <span class="cap">ลำดับการทิ้งไพ่ (เก่า → ล่าสุด)</span>
+        <div class="history-strip">${historyStrip}</div>
+      </div>
+    </div>
+    <button class="btn" data-action="discards-close">ปิด</button>
+  </div></div>`;
+}
+
 // ---------------- interactions (event delegation) ----------------
 document.addEventListener('click', async (ev) => {
   const t = ev.target.closest('[data-action]');
@@ -897,6 +945,8 @@ document.addEventListener('click', async (ev) => {
     case 'close-log': S.logOpen = false; render(); break;
     case 'help-open': S.helpOpen = true; render(); break;
     case 'help-close': S.helpOpen = false; render(); break;
+    case 'discards-open': S.discardsOpen = true; render(); break;
+    case 'discards-close': S.discardsOpen = false; render(); break;
     case 'close-reveal': S.reveal = null; render(); break;
     case 'select-card': {
       if (!isMyTurn()) return;

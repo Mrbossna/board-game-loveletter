@@ -186,7 +186,8 @@ input.code-input { text-transform: uppercase; letter-spacing: 6px; text-align: c
 .seat.selectable { cursor: pointer; border-color: var(--ok); box-shadow: 0 0 0 2px var(--ok), 0 0 16px rgba(70,177,123,0.5); }
 .seat.selectable:hover { transform: translateY(-2px); }
 .seat .nm { font-weight: 700; font-size: 0.82rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.seat .tokens { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; min-height: 10px; }
+.tokens { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; min-height: 10px; }
+.tk-count { font-size: 0.7rem; font-weight: 700; color: var(--gold); }
 .pip { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 5px rgba(217,180,91,0.7); }
 .pip.empty { background: rgba(255,255,255,0.14); box-shadow: none; }
 .seat .hand-mini { display: flex; gap: 3px; }
